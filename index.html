@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMPÉRIO DO NADA</title>
+    <style>
+        :root { --bg: #050505; --text: #eee; --accent: #333; }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #game-container { text-align: center; width: 90%; max-width: 500px; z-index: 2; }
+        
+        #nothing-counter {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        #existence-bar-container {
+            width: 100%;
+            height: 5px;
+            background: #222;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #existence-bar {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            transition: width 0.3s;
+        }
+
+        #main-button {
+            padding: 25px 50px;
+            font-size: 1.2rem;
+            background: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+
+        #main-button:active { transform: scale(0.95); }
+
+        #log {
+            margin: 20px 0;
+            height: 50px;
+            font-size: 0.9rem;
+            color: #777;
+        }
+
+        .upgrade-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .upgrade-btn {
+            background: #111;
+            color: #fff;
+            border: 1px solid var(--accent);
+            padding: 12px;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .upgrade-btn:hover:not(:disabled) { background: #222; }
+        .upgrade-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .upgrade-cost { font-size: 0.8rem; color: #888; }
+        
+        /* Efeito de glitch quando a barra some */
+        .low-existence { filter: blur(1px) contrast(2); }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="nothing-counter">0 Nadas</div>
+        
+        <div id="existence-bar-container">
+            <div id="existence-bar"></div>
+        </div>
+
+        <button id="main-button">NÃO CLIQUE</button>
+        <div id="log">...</div>
+
+        <div class="upgrade-list" id="upgrades-container"></div>
+    </div>
+
+    <script>
+        let totalNothing = 0;
+        let nothingPerClick = 1;
+        let nothingPerSecond = 0;
+        let existence = 100;
+
+        const upgrades = [
+            { id: 0, name: "Nada Eficiente", baseCost: 15, increase: 1, type: 'click', count: 0 },
+            { id: 1, name: "Automatizador de Vazio", baseCost: 100, increase: 1, type: 'auto', count: 0 },
+            { id: 2, name: "Filósofo Desocupado", baseCost: 500, increase: 5, type: 'auto', count: 0 },
+            { id: 3, name: "Buraco Negro Portátil", baseCost: 2000, increase: 20, type: 'auto', count: 0 }
+        ];
+
+        // Criar botões apenas uma vez
+        function initUpgrades() {
+            const container = document.getElementById('upgrades-container');
+            upgrades.forEach(up => {
+                const btn = document.createElement('button');
+                btn.className = 'upgrade-btn';
+                btn.id = `btn-${up.id}`;
+                btn.onclick = () => buyUpgrade(up.id);
+                btn.innerHTML = `
+                    <div>
+                        <div>${up.name}</div>
+                        <div class="upgrade-cost" id="cost-${up.id}">Custo: ${up.baseCost}</div>
+                    </div>
+                    <div id="count-${up.id}">0</div>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function buyUpgrade(id) {
+            const up = upgrades[id];
+            const currentCost = Math.floor(up.baseCost * Math.pow(1.15, up.count));
+
+            if (totalNothing >= currentCost) {
+                totalNothing -= currentCost;
+                up.count++;
+                
+                if (up.type === 'click') nothingPerClick += up.increase;
+                if (up.type === 'auto') nothingPerSecond += up.increase;
+
+                updateUI();
+                updateLog(id);
+            }
+        }
+
+        document.getElementById('main-button').onclick = () => {
+            totalNothing += nothingPerClick;
+            updateUI();
+        };
+
+        function updateUI() {
+            document.getElementById('nothing-counter').innerText = `${Math.floor(totalNothing)} Nadas`;
+            
+            // Atualizar barra de existência
+            existence = Math.max(0, 100 - (totalNothing / 100));
+            document.getElementById('existence-bar').style.width = existence + "%";
+            
+            if(existence < 20) document.body.classList.add('low-existence');
+
+            // Atualizar apenas os estados dos botões
+            upgrades.forEach(up => {
+                const currentCost = Math.floor(up.baseCost * Math.pow(1.15, up.count));
+                const btn = document.getElementById(`btn-${up.id}`);
+                const costLabel = document.getElementById(`cost-${up.id}`);
+                const countLabel = document.getElementById(`count-${up.id}`);
+                
+                btn.disabled = totalNothing < currentCost;
+                costLabel.innerText = `Custo: ${currentCost}`;
+                countLabel.innerText = up.count;
+            });
+        }
+
+        function updateLog(id) {
+            const logs = [
+                "O nada agora rende mais.",
+                "O vazio trabalha enquanto você assiste.",
+                "Um filósofo agora pensa no nada por você.",
+                "A realidade está sendo sugada."
+            ];
+            document.getElementById('log').innerText = logs[id] || "...";
+        }
+
+        // Loop de Automação (agora sem quebrar os cliques)
+        setInterval(() => {
+            if (nothingPerSecond > 0) {
+                totalNothing += (nothingPerSecond / 10);
+                updateUI();
+            }
+        }, 100);
+
+        initUpgrades();
+        updateUI();
+    </script>
+</body>
+</html>
